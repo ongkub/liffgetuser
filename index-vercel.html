@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตรวจสอบ LINE UID</title>
+  <link rel="stylesheet" href="css/formstyle.css">
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="circleTopLeft"></div>
+  <div class="bottomRight">
+    <div class="circleBottomRight"></div>
+  </div>
+  
+  <div class="main-container">
+    <div class="header">
+      <h1>🔍 ตรวจสอบ UID</h1>
+      <p>ค้นหาข้อมูลผู้ใช้งาน LINE จาก UID</p>
+    </div>
+    
+    <div class="card">
+      <div class="input-group">
+        <label for="uidInput">กรอก LINE User ID</label>
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            id="uidInput" 
+            placeholder="เช่น U1234567890abcdef1234567890abcdef"
+            autocomplete="off"
+          >
+        </div>
+        <div class="error-message" id="errorMessage">
+          ⚠️ รูปแบบ UID ไม่ถูกต้อง (ต้องขึ้นต้นด้วย U และมี 33 ตัวอักษร)
+        </div>
+      </div>
+      
+      <button class="btn btn-primary" id="checkBtn" onclick="checkUID()">
+        ตรวจสอบ UID
+      </button>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">กำลังค้นหาข้อมูล...</div>
+      </div>
+      
+      <div class="result-section" id="resultSection">
+        <div class="profile-container">
+          <img id="pictureUrl" class="profile-image" src="" alt="Profile Picture">
+          <div class="profile-name" id="displayName">-</div>
+          <div class="profile-uid" id="displayUid">-</div>
+        </div>
+        
+        <button class="btn btn-secondary" id="sendLinkBtn" onclick="sendRewardLink()">
+          📤 ส่งลิงก์กรอกข้อมูลรางวัล
+        </button>
+      </div>
+      
+      <div class="success-box" style="display: none;" id="successBox">
+        <strong>✅ ปลอดภัย:</strong>
+        แอปนี้ใช้ Vercel Serverless Function เป็นตัวกลาง 
+        Access Token จะถูกเก็บไว้ที่ Server ไม่ถูกเปิดเผยใน Frontend
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // กำหนด URL ของ Vercel API
+    const API_ENDPOINT = '/api/line-proxy'; // เปลี่ยนเป็น URL Vercel ของคุณถ้า deploy แยก
+    const REWARD_FORM_URL = 'https://your-reward-form.com/'; // เปลี่ยนเป็น URL ฟอร์มรางวัลของคุณ
+    
+    window.onload = function() {
+      document.getElementById('successBox').style.display = 'block';
+    }
+    
+    // ตรวจสอบรูปแบบ UID
+    function validateUID(uid) {
+      const uidPattern = /^U[0-9a-f]{32}$/i;
+      return uidPattern.test(uid);
+    }
+    
+    // ตรวจสอบ UID
+    async function checkUID() {
+      const uidInput = document.getElementById('uidInput');
+      const errorMessage = document.getElementById('errorMessage');
+      const loading = document.getElementById('loading');
+      const resultSection = document.getElementById('resultSection');
+      const checkBtn = document.getElementById('checkBtn');
+      
+      const uid = uidInput.value.trim();
+      
+      // ซ่อนผลลัพธ์เดิม
+      resultSection.classList.remove('show');
+      errorMessage.classList.remove('show');
+      uidInput.classList.remove('error');
+      
+      // ตรวจสอบ UID
+      if (!validateUID(uid)) {
+        uidInput.classList.add('error');
+        errorMessage.classList.add('show');
+        return;
+      }
+      
+      // แสดง loading
+      loading.classList.add('show');
+      checkBtn.disabled = true;
+      
+      try {
+        // เรียก Vercel API
+        const response = await fetch(`${API_ENDPOINT}?action=get-profile&uid=${uid}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `API Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // แสดงผลลัพธ์
+        displayProfile(data.profile, uid);
+        
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        
+        if (error.message.includes('404')) {
+          alert('❌ ไม่พบข้อมูลผู้ใช้ UID นี้\n\nสาเหตุที่เป็นไปได้:\n1. UID ไม่ถูกต้อง\n2. ผู้ใช้ยังไม่เคย Add Bot หรือส่งข้อความหา Bot\n3. Bot ถูกบล็อคโดยผู้ใช้');
+        } else if (error.message.includes('401')) {
+          alert('❌ ไม่สามารถเข้าถึงข้อมูลได้\nกรุณาตรวจสอบว่าได้ตั้งค่า Access Token ใน Vercel Environment Variables แล้ว');
+        } else {
+          alert('❌ เกิดข้อผิดพลาด: ' + error.message);
+        }
+      } finally {
+        loading.classList.remove('show');
+        checkBtn.disabled = false;
+      }
+    }
+    
+    // แสดงข้อมูลโปรไฟล์
+    function displayProfile(profile, uid) {
+      const pictureUrl = profile.pictureUrl || 'https://via.placeholder.com/150/0064ff/FFFFFF?text=No+Image';
+      document.getElementById('pictureUrl').src = pictureUrl;
+      document.getElementById('displayName').textContent = profile.displayName || 'ไม่มีชื่อ';
+      document.getElementById('displayUid').textContent = uid;
+      
+      document.getElementById('resultSection').classList.add('show');
+    }
+    
+    // ส่งลิงก์กรอกข้อมูลรางวัล
+    async function sendRewardLink() {
+      const uid = document.getElementById('uidInput').value.trim();
+      const displayName = document.getElementById('displayName').textContent;
+      
+      // สร้างลิงก์กรอกข้อมูลรางวัล
+      const rewardFormUrl = `${REWARD_FORM_URL}?uid=${uid}`;
+      
+      // สร้างข้อความที่จะส่ง
+      const messageText = `สวัสดีค่ะคุณ ${displayName}\n\nกรุณากรอกข้อมูลเพื่อรับรางวัลที่ลิงก์ด้านล่างนี้ค่ะ\n${rewardFormUrl}`;
+      
+      try {
+        // เรียก Vercel API
+        const response = await fetch(`${API_ENDPOINT}?action=send-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            to: uid,
+            message: messageText
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+        
+        alert('✅ ส่งลิงก์เรียบร้อยแล้ว!');
+        
+      } catch (error) {
+        console.error('Error sending message:', error);
+        
+        // ถ้าส่งไม่ได้ ให้คัดลอกข้อความ
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(messageText);
+          alert('📋 ไม่สามารถส่งข้อความอัตโนมัติได้\n\nได้คัดลอกข้อความไปยังคลิปบอร์ดแล้ว\nคุณสามารถนำไปส่งเองได้');
+        } else {
+          prompt('กรุณาคัดลอกข้อความนี้:', messageText);
+        }
+      }
+    }
+    
+    // Enter key support
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('uidInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          checkUID();
+        }
+      });
+      
+      // Real-time validation
+      document.getElementById('uidInput').addEventListener('input', function() {
+        const errorMessage = document.getElementById('errorMessage');
+        if (errorMessage.classList.contains('show')) {
+          errorMessage.classList.remove('show');
+          this.classList.remove('error');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
