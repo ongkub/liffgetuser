@@ -67,7 +67,7 @@
   <script>
     // กำหนด URL ของ Vercel API
     const API_ENDPOINT = '/api/line-proxy'; // เปลี่ยนเป็น URL Vercel ของคุณถ้า deploy แยก
-    const REWARD_FORM_URL = 'https://your-reward-form.com/'; // เปลี่ยนเป็น URL ฟอร์มรางวัลของคุณ
+    const REWARD_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfsw7bv-GSy8a07Ttu8K6gpgv3941y7ma0CxOJVXgP896QxKA/viewform?usp=pp_url'; // เปลี่ยนเป็น URL ฟอร์มรางวัลของคุณ
     
     window.onload = function() {
       document.getElementById('successBox').style.display = 'block';
@@ -156,7 +156,7 @@
       const displayName = document.getElementById('displayName').textContent;
       
       // สร้างลิงก์กรอกข้อมูลรางวัล
-      const rewardFormUrl = `${REWARD_FORM_URL}?uid=${uid}`;
+      const rewardFormUrl = `${REWARD_FORM_URL}&entry.690427565=${uid}`;
       
       // สร้างข้อความที่จะส่ง
       const messageText = `สวัสดีค่ะคุณ ${displayName}\n\nกรุณากรอกข้อมูลเพื่อรับรางวัลที่ลิงก์ด้านล่างนี้ค่ะ\n${rewardFormUrl}`;
